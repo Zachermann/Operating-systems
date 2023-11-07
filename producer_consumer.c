@@ -5,8 +5,8 @@
 
 
 
-#define MaxItems 5 
-#define BufferSize 5 
+#define MaxItems 5 //maximum items that can be produced and consumed
+#define BufferSize 5 //size of the buffer 
 
 sem_t empty;
 sem_t full;
@@ -50,7 +50,7 @@ int main()
     sem_init(&empty,0,BufferSize);
     sem_init(&full,0,0);
 
-    int a[5] = {1,2,3,4,5}; 
+    int a[5] = {1,2,3,4,5}; //numbers to label the producer and consumer 
 
     for(int i = 0; i < 5; i++) {
         pthread_create(&pro[i], NULL, (void *)producer, (void *)&a[i]);
