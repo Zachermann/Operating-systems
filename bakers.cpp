@@ -1,77 +1,63 @@
-#include <pthread.h>
-#include <semaphore.h>
-#include <stdlib.h>
-#include <stdio.h>
-
-/*
-This program provides a possible solution for producer-consumer problem using mutex and semaphore.
-I have used 5 producers and 5 consumers to demonstrate the solution. You can always play with these values.
-*/
-
-#define MaxItems 5 // Maximum items a producer can produce or a consumer can consume
-#define BufferSize 5 // Size of the buffer
-
-sem_t empty;
-sem_t full;
-int in = 0;
-int out = 0;
-int buffer[BufferSize];
-pthread_mutex_t mutex;
-
-void *producer(void *pno)
-{   
-    int item;
-    for(int i = 0; i < MaxItems; i++) {
-        item = rand(); // Produce an random item
-        sem_wait(&empty);
-        pthread_mutex_lock(&mutex);
-        buffer[in] = item;
-        printf("Producer %d: Insert Item %d at %d\n", *((int *)pno),buffer[in],in);
-        in = (in+1)%BufferSize;
-        pthread_mutex_unlock(&mutex);
-        sem_post(&full);
-    }
-}
-void *consumer(void *cno)
-{   
-    for(int i = 0; i < MaxItems; i++) {
-        sem_wait(&full);
-        pthread_mutex_lock(&mutex);
-        int item = buffer[out];
-        printf("Consumer %d: Remove Item %d from %d\n",*((int *)cno),item, out);
-        out = (out+1)%BufferSize;
-        pthread_mutex_unlock(&mutex);
-        sem_post(&empty);
-    }
-}
-
+#include <iostream>
+using namespace std;
+  
 int main()
-{  
-pthread_t pro[5],con[5];
-    pthread_mutex_init(&mutex, NULL);
-    sem_init(&empty,0,BufferSize);
-    sem_init(&full,0,0);
-
-    int a[5] = {1,2,3,4,5}; //Just used for numbering the producer and consumer
-
-    for(int i = 0; i < 5; i++) {
-        pthread_create(&pro[i], NULL, (void *)producer, (void *)&a[i]);
+{
+    // P0, P1, P2, P3, P4 are the Process names here
+  
+    int n, m, i, j, k;
+    n = 5; // Number of processes
+    m = 3; // Number of resources
+    int alloc[5][3] = { { 0, 1, 0 }, // P0 // Allocation Matrix
+                        { 2, 0, 0 }, // P1
+                        { 3, 0, 2 }, // P2
+                        { 2, 1, 1 }, // P3
+                        { 0, 0, 2 } }; // P4
+  
+    int max[5][3] = { { 7, 5, 3 }, // P0 // MAX Matrix
+                    { 3, 2, 2 }, // P1
+                    { 9, 0, 2 }, // P2
+                    { 2, 2, 2 }, // P3
+                    { 4, 3, 3 } }; // P4
+  
+    int avail[3] = { 3, 3, 2 }; // Available Resources
+  
+    int f[n], ans[n], ind = 0;
+    for (k = 0; k < n; k++) {
+        f[k] = 0;
     }
-    for(int i = 0; i < 5; i++) {
-        pthread_create(&con[i], NULL, (void *)consumer, (void *)&a[i]);
+    int need[n][m];
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < m; j++)
+            need[i][j] = max[i][j] - alloc[i][j];
     }
-
-    for(int i = 0; i < 5; i++) {
-        pthread_join(pro[i], NULL);
+    int y = 0;
+    for (k = 0; k < 5; k++) {
+        for (i = 0; i < n; i++) {
+            if (f[i] == 0) {
+  
+                int flag = 0;
+                for (j = 0; j < m; j++) {
+                    if (need[i][j] > avail[j]){
+                        flag = 1;
+                        break;
+                    }
+                }
+  
+                if (flag == 0) {
+                    ans[ind++] = i;
+                    for (y = 0; y < m; y++)
+                        avail[y] += alloc[i][y];
+                    f[i] = 1;
+                }
+            }
+        }
     }
-    for(int i = 0; i < 5; i++) {
-        pthread_join(con[i], NULL);
-    }
-
-    pthread_mutex_destroy(&mutex);
-    sem_destroy(&empty);
-    sem_destroy(&full);
-
-    return 0;
-    
+  
+    cout << "Following is the SAFE Sequence" << endl;
+    for (i = 0; i < n - 1; i++)
+        cout << " P" << ans[i] << " ->";
+    cout << " P" << ans[n - 1] <<endl;
+  
+    return (0);
 }
