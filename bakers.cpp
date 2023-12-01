@@ -1,81 +1,78 @@
-#include <iostream>
-#include <vector>
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-using namespace std;
+/*
+This program provides a possible solution for producer-consumer problem using mutex and semaphore.
+I have used 5 producers and 5 consumers to demonstrate the solution. You can always play with these values.
+*/
 
-const int NUM_PROCESSES = 5;
-const int NUM_RESOURCES = 3;
+#define MaxItems 5 // Maximum items a producer can produce or a consumer can consume
+#define BufferSize 5 // Size of the buffer
 
-bool isSafeState(const vector<vector<int>>& max, const vector<vector<int>>& alloc, const vector<int>& avail, vector<int>& safeSeq) {
-    vector<int> work = avail;
-    vector<bool> finish(NUM_PROCESSES, false);
+sem_t empty;
+sem_t full;
+int in = 0;
+int out = 0;
+int buffer[BufferSize];
+pthread_mutex_t mutex;
 
-    for (int k = 0; k < NUM_PROCESSES; ++k) {
-        bool found = false;
-        for (int i = 0; i < NUM_PROCESSES; ++i) {
-            if (!finish[i]) {
-                bool canAllocate = true;
-                for (int j = 0; j < NUM_RESOURCES; ++j) {
-                    if (max[i][j] - alloc[i][j] > work[j]) {
-                        canAllocate = false;
-                        break;
-                    }
-                }
-
-                if (canAllocate) {
-                    for (int j = 0; j < NUM_RESOURCES; ++j) {
-                        work[j] += alloc[i][j];
-                    }
-                    safeSeq.push_back(i);
-                    finish[i] = true;
-                    found = true;
-                }
-            }
-        }
-
-        if (!found) {
-            // If no process can be allocated, the system is not in a safe state
-            return false;
-        }
+void *producer(void *pno)
+{   
+    int item;
+    for(int i = 0; i < MaxItems; i++) {
+        item = rand(); // Produce an random item
+        sem_wait(&empty);
+        pthread_mutex_lock(&mutex);
+        buffer[in] = item;
+        printf("Producer %d: Insert Item %d at %d\n", *((int *)pno),buffer[in],in);
+        in = (in+1)%BufferSize;
+        pthread_mutex_unlock(&mutex);
+        sem_post(&full);
     }
-
-    // If all processes are finished, the system is in a safe state
-    return true;
+}
+void *consumer(void *cno)
+{   
+    for(int i = 0; i < MaxItems; i++) {
+        sem_wait(&full);
+        pthread_mutex_lock(&mutex);
+        int item = buffer[out];
+        printf("Consumer %d: Remove Item %d from %d\n",*((int *)cno),item, out);
+        out = (out+1)%BufferSize;
+        pthread_mutex_unlock(&mutex);
+        sem_post(&empty);
+    }
 }
 
-int main() {
-    // Given snapshot at time t0
-    vector<vector<int>> max = {
-        {7, 5, 3},
-        {3, 2, 2},
-        {9, 0, 2},
-        {2, 2, 2},
-        {4, 3, 3}
-    };
+int main()
+{   
+Step 2/2
+pthread_t pro[5],con[5];
+    pthread_mutex_init(&mutex, NULL);
+    sem_init(&empty,0,BufferSize);
+    sem_init(&full,0,0);
 
-    vector<vector<int>> alloc = {
-        {0, 1, 0},
-        {2, 0, 0},
-        {3, 0, 2},
-        {2, 1, 1},
-        {0, 0, 2}
-    };
+    int a[5] = {1,2,3,4,5}; //Just used for numbering the producer and consumer
 
-    vector<int> avail = {3, 3, 2};
-    vector<int> safeSeq;
-
-    if (isSafeState(max, alloc, avail, safeSeq)) {
-        cout << "The system is in a safe state.\nSafe sequence: ";
-        for (int i = 0; i < safeSeq.size(); ++i) {
-            cout << "P" << safeSeq[i];
-            if (i != safeSeq.size() - 1) {
-                cout << " -> ";
-            }
-        }
-        cout << endl;
-    } else {
-        cout << "The system is not in a safe state.\n";
+    for(int i = 0; i < 5; i++) {
+        pthread_create(&pro[i], NULL, (void *)producer, (void *)&a[i]);
+    }
+    for(int i = 0; i < 5; i++) {
+        pthread_create(&con[i], NULL, (void *)consumer, (void *)&a[i]);
     }
 
+    for(int i = 0; i < 5; i++) {
+        pthread_join(pro[i], NULL);
+    }
+    for(int i = 0; i < 5; i++) {
+        pthread_join(con[i], NULL);
+    }
+
+    pthread_mutex_destroy(&mutex);
+    sem_destroy(&empty);
+    sem_destroy(&full);
+
     return 0;
+    
 }
