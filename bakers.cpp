@@ -46,8 +46,7 @@ void *consumer(void *cno)
 }
 
 int main()
-{   
-Step 2/2
+{  
 pthread_t pro[5],con[5];
     pthread_mutex_init(&mutex, NULL);
     sem_init(&empty,0,BufferSize);
